@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
@@ -37,27 +37,32 @@ class UsuarioResponse(BaseModel):
 
 @router.post("/registro", response_model=UsuarioResponse, status_code=201)
 async def registro(data: RegistroRequest, db: AsyncSession = Depends(get_db)):
-    # Verificar si el email ya existe
-    result = await db.execute(select(Usuario).where(Usuario.email == data.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(400, "El email ya está registrado")
+    try:
+        # Verificar si el email ya existe
+        result = await db.execute(select(Usuario).where(Usuario.email == data.email))
+        if result.scalar_one_or_none():
+            raise HTTPException(400, "El email ya está registrado")
 
-    usuario = Usuario(
-        email=data.email,
-        password_hash=hash_password(data.password),
-        nombre=data.nombre,
-        rol=data.rol,
-    )
-    db.add(usuario)
-    await db.flush()
+        usuario = Usuario(
+            email=data.email,
+            password_hash=hash_password(data.password),
+            nombre=data.nombre,
+            rol=data.rol,
+        )
+        db.add(usuario)
+        await db.flush()
 
-    return UsuarioResponse(
-        id=str(usuario.id),
-        email=usuario.email,
-        nombre=usuario.nombre,
-        rol=usuario.rol,
-        activo=usuario.activo,
-    )
+        return UsuarioResponse(
+            id=str(usuario.id),
+            email=usuario.email,
+            nombre=usuario.nombre,
+            rol=usuario.rol,
+            activo=usuario.activo,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Error en registro: {type(e).__name__}: {str(e)}")
 
 
 @router.post("/login", response_model=LoginResponse)
