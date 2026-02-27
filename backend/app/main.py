@@ -22,9 +22,8 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Crear tablas al iniciar (solo desarrollo)."""
-    if settings.DEBUG:
-        await init_db()
+    """Crear tablas al iniciar si no existen."""
+    await init_db()
     yield
 
 
