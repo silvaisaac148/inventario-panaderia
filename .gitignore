@@ -34,3 +34,12 @@ frontend/dist/
 
 # Alembic
 alembic/versions/*.pyc
+
+# Database
+*.db
+
+# Logs
+pip_log.txt
+
+# Test scripts
+test_api.py
