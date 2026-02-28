@@ -35,9 +35,9 @@ api.interceptors.response.use(
 
 // ---- Ingredientes ----
 export const ingredientesAPI = {
-  listar: () => api.get('/ingredientes'),
+  listar: () => api.get('/ingredientes/'),
   obtener: (id) => api.get(`/ingredientes/${id}`),
-  crear: (data) => api.post('/ingredientes', data),
+  crear: (data) => api.post('/ingredientes/', data),
   actualizar: (id, data) => api.put(`/ingredientes/${id}`, data),
   eliminar: (id) => api.delete(`/ingredientes/${id}`),
   compra: (id, data) => api.post(`/ingredientes/${id}/compra`, data),
@@ -46,9 +46,9 @@ export const ingredientesAPI = {
 
 // ---- Productos ----
 export const productosAPI = {
-  listar: () => api.get('/productos'),
+  listar: () => api.get('/productos/'),
   obtener: (id) => api.get(`/productos/${id}`),
-  crear: (data) => api.post('/productos', data),
+  crear: (data) => api.post('/productos/', data),
   actualizar: (id, data) => api.put(`/productos/${id}`, data),
   eliminar: (id) => api.delete(`/productos/${id}`),
 };
@@ -57,7 +57,7 @@ export const productosAPI = {
 export const recetasAPI = {
   listar: () => api.get('/recetas'),
   obtener: (id) => api.get(`/recetas/${id}`),
-  crear: (data) => api.post('/recetas', data),
+  crear: (data) => api.post('/recetas/', data),
   actualizar: (id, data) => api.put(`/recetas/${id}`, data),
   eliminar: (id) => api.delete(`/recetas/${id}`),
   costo: (id) => api.get(`/recetas/${id}/costo`),
