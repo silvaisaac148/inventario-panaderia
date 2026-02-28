@@ -55,7 +55,7 @@ export const productosAPI = {
 
 // ---- Recetas ----
 export const recetasAPI = {
-  listar: () => api.get('/recetas'),
+  listar: () => api.get('/recetas/'),
   obtener: (id) => api.get(`/recetas/${id}`),
   crear: (data) => api.post('/recetas/', data),
   actualizar: (id, data) => api.put(`/recetas/${id}`, data),
@@ -66,13 +66,13 @@ export const recetasAPI = {
 // ---- Producción ----
 export const produccionAPI = {
   verificar: (data) => api.post('/produccion/verificar', data),
-  producir: (data) => api.post('/produccion', data),
+  producir: (data) => api.post('/produccion/', data),
   historial: () => api.get('/produccion/historial'),
 };
 
 // ---- Ventas ----
 export const ventasAPI = {
-  registrar: (data) => api.post('/ventas', data),
+  registrar: (data) => api.post('/ventas/', data),
   historial: () => api.get('/ventas/historial'),
 };
 
