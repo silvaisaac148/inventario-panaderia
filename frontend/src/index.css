@@ -66,7 +66,6 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
 a {
@@ -285,8 +284,11 @@ a:hover {
 /* ---- Tables ---- */
 .table-container {
   overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--radius);
   border: 1px solid var(--border);
+  width: 100%;
 }
 
 table {
@@ -719,13 +721,22 @@ tbody tr:last-child td {
   }
 
   /* Tables: force horizontal scroll on mobile */
+  .main-content {
+    overflow-x: hidden;
+  }
+
   .table-container {
-    position: relative;
-    -webkit-overflow-scrolling: touch;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
 
   .table-container table {
-    min-width: 600px;
+    min-width: 700px;
   }
 
   .table-container td,
