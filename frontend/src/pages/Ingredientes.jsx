@@ -1,21 +1,30 @@
 /**
- * Ingredientes — CRUD + compras con costo ponderado.
+ * Ingredientes — CRUD + compras con costo ponderado + historial de movimientos.
  */
 
 import { useState, useEffect } from 'react';
 import { ingredientesAPI } from '../services/api';
-import { MdAdd, MdEdit, MdDelete, MdShoppingCart, MdClose } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdShoppingCart, MdClose, MdHistory } from 'react-icons/md';
+
+const TIPO_BADGE = {
+    COMPRA: 'badge-success',
+    PRODUCCION: 'badge-warning',
+    AJUSTE: 'badge-info',
+    MERMA: 'badge-danger',
+};
 
 export default function Ingredientes() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [modal, setModal] = useState(null); // 'crear' | 'editar' | 'compra'
+    const [modal, setModal] = useState(null); // 'crear' | 'editar' | 'compra' | 'movimientos'
     const [selected, setSelected] = useState(null);
     const [msg, setMsg] = useState(null);
     const [form, setForm] = useState({
         nombre: '', unidad_medida: 'kg', stock_actual: 0, stock_minimo: 0, costo_unitario: 0,
     });
     const [compraForm, setCompraForm] = useState({ cantidad: '', costo_total: '', nota: '' });
+    const [movimientos, setMovimientos] = useState([]);
+    const [movLoading, setMovLoading] = useState(false);
 
     const cargar = () => {
         setLoading(true);
@@ -30,6 +39,7 @@ export default function Ingredientes() {
     const resetForm = () => {
         setForm({ nombre: '', unidad_medida: 'kg', stock_actual: 0, stock_minimo: 0, costo_unitario: 0 });
         setCompraForm({ cantidad: '', costo_total: '', nota: '' });
+        setMovimientos([]);
         setSelected(null);
         setModal(null);
     };
@@ -99,6 +109,19 @@ export default function Ingredientes() {
         setModal('compra');
     };
 
+    const abrirMovimientos = async (item) => {
+        setSelected(item);
+        setModal('movimientos');
+        setMovLoading(true);
+        try {
+            const res = await ingredientesAPI.movimientos(item.id);
+            setMovimientos(res.data);
+        } catch {
+            setMsg({ tipo: 'danger', texto: 'Error al cargar movimientos' });
+        }
+        setMovLoading(false);
+    };
+
     if (loading) return <div className="loading"><div className="spinner"></div></div>;
 
     return (
@@ -155,6 +178,9 @@ export default function Ingredientes() {
                                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                                         <button className="btn btn-success btn-sm" title="Registrar compra" onClick={() => abrirCompra(item)}>
                                             <MdShoppingCart />
+                                        </button>
+                                        <button className="btn btn-outline btn-sm" title="Historial" onClick={() => abrirMovimientos(item)}>
+                                            <MdHistory />
                                         </button>
                                         <button className="btn btn-outline btn-sm" title="Editar" onClick={() => abrirEditar(item)}>
                                             <MdEdit />
@@ -256,6 +282,60 @@ export default function Ingredientes() {
                                 <button type="submit" className="btn btn-success">Registrar Compra</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Movimientos */}
+            {modal === 'movimientos' && selected && (
+                <div className="modal-overlay" onClick={resetForm}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+                        <div className="modal-header">
+                            <h2>📋 Historial de Movimientos</h2>
+                            <button className="close-btn" onClick={resetForm}><MdClose /></button>
+                        </div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                            <strong>{selected.nombre}</strong> — Stock actual: {parseFloat(selected.stock_actual).toFixed(2)} {selected.unidad_medida}
+                        </p>
+                        {movLoading ? (
+                            <div className="loading"><div className="spinner"></div></div>
+                        ) : (
+                            <div className="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Tipo</th>
+                                            <th>Cantidad</th>
+                                            <th>Costo</th>
+                                            <th>Referencia</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {movimientos.length === 0 ? (
+                                            <tr><td colSpan={5} className="empty-state">Sin movimientos registrados</td></tr>
+                                        ) : movimientos.map((m) => (
+                                            <tr key={m.id}>
+                                                <td>{new Date(m.fecha).toLocaleDateString()}</td>
+                                                <td>
+                                                    <span className={`badge ${TIPO_BADGE[m.tipo] || 'badge-info'}`}>
+                                                        {m.tipo}
+                                                    </span>
+                                                </td>
+                                                <td style={{ color: m.cantidad >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                                                    {m.cantidad >= 0 ? '+' : ''}{parseFloat(m.cantidad).toFixed(4)}
+                                                </td>
+                                                <td>${parseFloat(m.costo_total).toFixed(2)}</td>
+                                                <td style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{m.referencia}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                        <div className="modal-actions">
+                            <button type="button" className="btn btn-outline" onClick={resetForm}>Cerrar</button>
+                        </div>
                     </div>
                 </div>
             )}

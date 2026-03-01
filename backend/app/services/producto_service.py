@@ -47,5 +47,23 @@ async def eliminar_producto(db: AsyncSession, producto_id: UUID) -> bool:
     producto = await db.get(Producto, producto_id)
     if not producto:
         return False
+        
+    from sqlalchemy import delete
+    from app.models.venta import Venta
+    from app.models.receta import Receta, RecetaDetalle
+    from app.models.produccion import Produccion
+    
+    # ⚠️ Forzar borrado en cascada para SQLite (Ventas históricas del producto)
+    await db.execute(delete(Venta).where(Venta.producto_id == producto_id))
+    
+    # Localizar si tiene una receta para borrar todo su historial de producción
+    rec_q = await db.execute(select(Receta.id).where(Receta.producto_id == producto_id))
+    rec_id = rec_q.scalar_one_or_none()
+    
+    if rec_id:
+        await db.execute(delete(Produccion).where(Produccion.receta_id == rec_id))
+        await db.execute(delete(RecetaDetalle).where(RecetaDetalle.receta_id == rec_id))
+        await db.execute(delete(Receta).where(Receta.producto_id == producto_id))
+
     await db.delete(producto)
     return True

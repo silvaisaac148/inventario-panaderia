@@ -7,6 +7,7 @@ from app.models.movimiento import MovimientoStock
 from app.models.produccion import Produccion
 from app.models.venta import Venta
 from app.models.usuario import Usuario
+from app.models.notificacion import Notificacion
 
 __all__ = [
     "Ingrediente",
@@ -17,4 +18,5 @@ __all__ = [
     "Produccion",
     "Venta",
     "Usuario",
+    "Notificacion",
 ]

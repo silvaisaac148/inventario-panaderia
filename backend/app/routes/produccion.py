@@ -1,7 +1,8 @@
 """Rutas API: Producción."""
 
+from datetime import datetime
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.schemas.produccion import ProduccionCreate
@@ -28,9 +29,22 @@ async def producir(data: ProduccionCreate, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, str(e))
 
 
+@router.post("/{produccion_id}/anular")
+async def anular_produccion(produccion_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Anula una producción existente."""
+    try:
+        return await service.anular_produccion(db, produccion_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @router.get("/historial")
-async def historial(db: AsyncSession = Depends(get_db)):
-    producciones = await service.historial_producciones(db)
+async def historial(
+    fecha_desde: datetime | None = Query(None, description="Fecha inicio (ISO)"),
+    fecha_hasta: datetime | None = Query(None, description="Fecha fin (ISO)"),
+    db: AsyncSession = Depends(get_db),
+):
+    producciones = await service.historial_producciones(db, fecha_desde, fecha_hasta)
     result = []
     for p in producciones:
         result.append({

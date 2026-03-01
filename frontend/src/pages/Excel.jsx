@@ -37,22 +37,17 @@ export default function Excel() {
     const handleExport = async (tipo) => {
         setLoading(true);
         try {
-            // Usar descarga directa por URL — el navegador respeta Content-Disposition
             const token = localStorage.getItem('token');
             const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-            const endpoint = tipo === 'stock' ? 'exportar/stock' : 'exportar/movimientos';
+            const endpoint = tipo === 'stock' ? 'exportar/stock.xlsx' : 'exportar/movimientos.xlsx';
             const url = `${baseUrl}/excel/${endpoint}?token=${token}`;
 
-            // Crear un link temporal que el navegador trata como descarga directa
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', '');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // Delegar la descarga nativa al navegador leyendo el Content-Disposition del Backend
+            window.location.assign(url);
 
             setMsg({ tipo: 'success', texto: `✅ Descargando archivo...` });
-        } catch {
+        } catch (err) {
+            console.error(err);
             setMsg({ tipo: 'danger', texto: 'Error al exportar' });
         }
         setLoading(false);

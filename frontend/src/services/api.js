@@ -42,6 +42,7 @@ export const ingredientesAPI = {
   eliminar: (id) => api.delete(`/ingredientes/${id}`),
   compra: (id, data) => api.post(`/ingredientes/${id}/compra`, data),
   alertas: () => api.get('/ingredientes/alertas'),
+  movimientos: (id, params) => api.get(`/ingredientes/${id}/movimientos`, { params }),
 };
 
 // ---- Productos ----
@@ -67,13 +68,16 @@ export const recetasAPI = {
 export const produccionAPI = {
   verificar: (data) => api.post('/produccion/verificar', data),
   producir: (data) => api.post('/produccion/', data),
-  historial: () => api.get('/produccion/historial'),
+  historial: (params) => api.get('/produccion/historial', { params }),
+  anular: (id) => api.post(`/produccion/${id}/anular`),
 };
 
 // ---- Ventas ----
 export const ventasAPI = {
   registrar: (data) => api.post('/ventas/', data),
-  historial: () => api.get('/ventas/historial'),
+  historial: (params) => api.get('/ventas/historial', { params }),
+  editar: (id, data) => api.put(`/ventas/${id}`, data),
+  anular: (id) => api.post(`/ventas/${id}/anular`),
 };
 
 // ---- Excel ----
@@ -99,6 +103,18 @@ export const excelAPI = {
 // ---- Reportes ----
 export const reportesAPI = {
   dashboard: () => api.get('/reportes/dashboard'),
+  ganancias: (params) => api.get('/reportes/ganancias', { params }),
+  tendencias: (params) => api.get('/reportes/tendencias', { params }),
+  actividadReciente: (params) => api.get('/reportes/actividad-reciente', { params }),
+  movimientos: (params) => api.get('/reportes/movimientos', { params }),
+  resetDB: () => api.delete('/reportes/reset-db'),
+};
+
+// ---- Notificaciones ----
+export const notificacionesAPI = {
+  listar: () => api.get('/notificaciones/'),
+  conteo: () => api.get('/notificaciones/conteo'),
+  leer: (ids) => api.put('/notificaciones/leer', { ids }),
 };
 
 // ---- Auth ----
@@ -113,22 +129,21 @@ export const authAPI = {
 
 // ---- Utilidades ----
 export const descargarExcel = (blobData, filename) => {
-  // Crear un File (no Blob) para que el navegador respete el nombre
-  const file = new File([blobData], filename, {
+  const blob = new Blob([blobData], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
-  const url = URL.createObjectURL(file);
+  const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', filename);
-  link.style.display = 'none';
+  link.download = filename;
+
   document.body.appendChild(link);
-  link.click();
-  // Esperar 1s antes de limpiar para que el navegador inicie la descarga
+  link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+
   setTimeout(() => {
-    URL.revokeObjectURL(url);
     link.remove();
-  }, 1000);
+    window.URL.revokeObjectURL(url);
+  }, 10000);
 };
 
 export default api;

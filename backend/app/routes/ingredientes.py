@@ -1,7 +1,8 @@
 """Rutas API: Ingredientes."""
 
+from datetime import datetime
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.schemas.ingrediente import (
@@ -63,3 +64,23 @@ async def registrar_compra(
         return await service.registrar_compra(db, ingrediente_id, data)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@router.get("/{ingrediente_id}/movimientos")
+async def movimientos_ingrediente(
+    ingrediente_id: UUID,
+    fecha_desde: datetime | None = Query(None, description="Fecha inicio (ISO)"),
+    fecha_hasta: datetime | None = Query(None, description="Fecha fin (ISO)"),
+    tipo: str | None = Query(None, description="COMPRA, PRODUCCION, AJUSTE, MERMA"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Historial de movimientos de stock para un ingrediente."""
+    from app.services import movimiento_service
+    movimientos = await movimiento_service.historial_por_ingrediente(
+        db, ingrediente_id, fecha_desde, fecha_hasta, tipo
+    )
+    return [
+        movimiento_service.serializar_movimiento(m)
+        for m in movimientos
+    ]
+

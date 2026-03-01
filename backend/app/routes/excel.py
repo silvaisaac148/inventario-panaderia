@@ -53,7 +53,7 @@ async def importar_recetas(
 # ============ EXPORTACIÓN ============
 # Acepta token como query param para descarga directa desde el navegador
 
-@router.get("/exportar/stock")
+@router.get("/exportar/stock.xlsx")
 async def exportar_stock(
     token: str = Query(None, description="JWT token para descarga directa"),
     db: AsyncSession = Depends(get_db),
@@ -64,13 +64,13 @@ async def exportar_stock(
         io.BytesIO(content),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": "attachment; filename=stock_ingredientes.xlsx",
+            "Content-Disposition": 'attachment; filename="stock_ingredientes.xlsx"',
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )
 
 
-@router.get("/exportar/movimientos")
+@router.get("/exportar/movimientos.xlsx")
 async def exportar_movimientos(
     token: str = Query(None, description="JWT token para descarga directa"),
     db: AsyncSession = Depends(get_db),
@@ -81,7 +81,7 @@ async def exportar_movimientos(
         io.BytesIO(content),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": "attachment; filename=movimientos_stock.xlsx",
+            "Content-Disposition": 'attachment; filename="movimientos_stock.xlsx"',
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )

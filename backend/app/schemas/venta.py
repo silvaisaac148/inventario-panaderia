@@ -12,6 +12,12 @@ class VentaCreate(BaseModel):
     nota: str | None = None
 
 
+class VentaUpdate(BaseModel):
+    cantidad: int = Field(..., gt=0)
+    precio_unitario: float | None = None
+    nota: str | None = None
+
+
 class VentaResponse(BaseModel):
     id: UUID
     producto_id: UUID
@@ -20,6 +26,8 @@ class VentaResponse(BaseModel):
     precio_unitario: float
     total: float
     nota: str | None
+    estado: str = "ACTIVA"
     fecha: datetime
 
     model_config = {"from_attributes": True}
+

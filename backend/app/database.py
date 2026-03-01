@@ -3,6 +3,7 @@
 Soporta SQLite (desarrollo local) y PostgreSQL (producción).
 """
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import get_settings
@@ -45,7 +46,28 @@ async def get_db():
             await session.close()
 
 
+async def _run_migrations(conn):
+    """Migraciones incrementales seguras (idempotentes)."""
+    # Migración: agregar columna estado a ventas (v1.1)
+    try:
+        await conn.execute(
+            text("ALTER TABLE ventas ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVA'")
+        )
+    except Exception:
+        pass  # Ya existe, todo bien
+        
+    # Migración: agregar columna costo_unitario a ventas (v1.2)
+    try:
+        await conn.execute(
+            text("ALTER TABLE ventas ADD COLUMN costo_unitario NUMERIC(12, 4) NOT NULL DEFAULT 0.0000")
+        )
+    except Exception:
+        pass  # Ya existe, todo bien
+
+
 async def init_db():
-    """Crear todas las tablas (solo para desarrollo)."""
+    """Crear todas las tablas (solo para desarrollo) y ejecutar migraciones."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await _run_migrations(conn)
+

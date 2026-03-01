@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.ingrediente import Ingrediente
 from app.models.movimiento import MovimientoStock
 from app.schemas.ingrediente import IngredienteCreate, IngredienteUpdate, CompraIngrediente
+from app.services import notificacion_service
 
 
 # --------------- Conversión de unidades ---------------
@@ -85,6 +86,11 @@ async def actualizar_ingrediente(
             ingrediente.costo_unitario, ingrediente.unidad_medida
         )
 
+    await db.flush()
+    # Trigger Auto-Check de Inventario si se rebajó material manualmente
+    await notificacion_service.verificar_stock_y_notificar(db)
+
+    await db.refresh(ingrediente)
     return ingrediente
 
 
@@ -92,6 +98,15 @@ async def eliminar_ingrediente(db: AsyncSession, ingrediente_id: UUID) -> bool:
     ingrediente = await db.get(Ingrediente, ingrediente_id)
     if not ingrediente:
         return False
+        
+    from sqlalchemy import delete
+    from app.models.movimiento import MovimientoStock
+    from app.models.receta import RecetaDetalle
+    
+    # ⚠️ Forzar borrado en cascada para SQLite (historial y recetas)
+    await db.execute(delete(MovimientoStock).where(MovimientoStock.ingrediente_id == ingrediente_id))
+    await db.execute(delete(RecetaDetalle).where(RecetaDetalle.ingrediente_id == ingrediente_id))
+    
     await db.delete(ingrediente)
     return True
 
@@ -144,8 +159,7 @@ async def registrar_compra(
         referencia=data.nota or "Compra de insumo",
     )
     db.add(movimiento)
-
-    return {
+    res = {
         "ingrediente": ingrediente.nombre,
         "stock_anterior": stock_anterior,
         "stock_nuevo": stock_nuevo,
@@ -154,6 +168,19 @@ async def registrar_compra(
         "cantidad_comprada": data.cantidad,
         "costo_compra": data.costo_total,
     }
+
+    # Verificar stock bajo para ingredientes o crear alerta de repuesto
+    if stock_anterior <= ingrediente.stock_minimo and stock_nuevo > ingrediente.stock_minimo:
+        await notificacion_service.crear_notificacion(
+            db,
+            tipo="STOCK_REPUESTO",
+            mensaje=f"✅ {ingrediente.nombre}: stock repuesto ({stock_nuevo} {ingrediente.unidad_medida})",
+            referencia_tipo="ingrediente",
+            referencia_id=ingrediente.id,
+        )
+    await notificacion_service.verificar_stock_y_notificar(db)
+
+    return res
 
 
 # --------------- ALERTAS ---------------

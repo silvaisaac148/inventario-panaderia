@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { produccionAPI, recetasAPI } from '../services/api';
-import { MdFactory, MdCheckCircle } from 'react-icons/md';
+import { MdFactory, MdCheckCircle, MdFilterList, MdCancel } from 'react-icons/md';
 
 export default function Produccion() {
     const [recetas, setRecetas] = useState([]);
@@ -15,12 +15,38 @@ export default function Produccion() {
     const [verificacion, setVerificacion] = useState(null);
     const [resultado, setResultado] = useState(null);
 
+    // Filtros de fecha
+    const [fechaDesde, setFechaDesde] = useState('');
+    const [fechaHasta, setFechaHasta] = useState('');
+
+    const cargarHistorial = async (desde, hasta) => {
+        const params = {};
+        if (desde) params.fecha_desde = new Date(desde + 'T00:00:00').toISOString();
+        if (hasta) params.fecha_hasta = new Date(hasta + 'T23:59:59').toISOString();
+        const h = await produccionAPI.historial(params);
+        setHistorial(h.data);
+    };
+
     useEffect(() => {
         Promise.all([recetasAPI.listar(), produccionAPI.historial()])
             .then(([r, h]) => { setRecetas(r.data); setHistorial(h.data); })
             .catch(() => setMsg({ tipo: 'danger', texto: 'Error al cargar datos' }))
             .finally(() => setLoading(false));
     }, []);
+
+    const aplicarFiltro = () => cargarHistorial(fechaDesde, fechaHasta);
+    const limpiarFiltro = () => { setFechaDesde(''); setFechaHasta(''); cargarHistorial('', ''); };
+
+    const setPreset = (dias) => {
+        const hasta = new Date();
+        const desde = new Date();
+        desde.setDate(desde.getDate() - dias);
+        const d = desde.toISOString().split('T')[0];
+        const h = hasta.toISOString().split('T')[0];
+        setFechaDesde(d);
+        setFechaHasta(h);
+        cargarHistorial(d, h);
+    };
 
     const verificar = async () => {
         if (!form.receta_id) return;
@@ -37,11 +63,22 @@ export default function Produccion() {
             setResultado(res.data);
             setVerificacion(null);
             setMsg({ tipo: 'success', texto: `✅ Producción completada: ${res.data.cantidad_producida} unidades` });
-            // Recargar historial
-            const h = await produccionAPI.historial();
-            setHistorial(h.data);
+            // Recargar historial con filtro actual
+            await cargarHistorial(fechaDesde, fechaHasta);
         } catch (err) {
             setMsg({ tipo: 'danger', texto: err.response?.data?.detail || 'Error en producción' });
+        }
+    };
+
+    const anular = async (id) => {
+        if (!window.confirm('¿Está seguro de anular esta producción? Se devolverán los ingredientes al inventario y se descontará el producto terminado.')) return;
+
+        try {
+            await produccionAPI.anular(id);
+            setMsg({ tipo: 'success', texto: '✅ Producción anulada correctamente.' });
+            await cargarHistorial(fechaDesde, fechaHasta);
+        } catch (err) {
+            setMsg({ tipo: 'danger', texto: err.response?.data?.detail || 'No se pudo anular la producción.' });
         }
     };
 
@@ -144,12 +181,40 @@ export default function Produccion() {
             {/* Historial */}
             <div className="section">
                 <h3 className="section-title">📋 Historial de Producciones</h3>
+
+                {/* Filtros de fecha */}
+                <div className="card" style={{ marginBottom: '1rem', padding: '1rem 1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                        <MdFilterList style={{ color: 'var(--accent-secondary)' }} />
+                        <strong style={{ fontSize: '0.85rem' }}>Filtrar por fecha</strong>
+                        <div style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+                            <button className="btn btn-outline btn-sm" onClick={() => setPreset(0)}>Hoy</button>
+                            <button className="btn btn-outline btn-sm" onClick={() => setPreset(7)}>7 días</button>
+                            <button className="btn btn-outline btn-sm" onClick={() => setPreset(30)}>30 días</button>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div className="form-group" style={{ marginBottom: 0, flex: '1 1 150px' }}>
+                            <label>Desde</label>
+                            <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, flex: '1 1 150px' }}>
+                            <label>Hasta</label>
+                            <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+                        </div>
+                        <button className="btn btn-primary btn-sm" onClick={aplicarFiltro}>Filtrar</button>
+                        {(fechaDesde || fechaHasta) && (
+                            <button className="btn btn-outline btn-sm" onClick={limpiarFiltro}>Limpiar</button>
+                        )}
+                    </div>
+                </div>
+
                 <div className="table-container">
                     <table>
-                        <thead><tr><th>Fecha</th><th>Receta</th><th>Producto</th><th>Cantidad</th><th>Costo</th></tr></thead>
+                        <thead><tr><th>Fecha</th><th>Receta</th><th>Producto</th><th>Cantidad</th><th>Costo</th><th>Estado</th><th>Acciones</th></tr></thead>
                         <tbody>
                             {historial.length === 0 ? (
-                                <tr><td colSpan={5} className="empty-state">Sin producciones aún</td></tr>
+                                <tr><td colSpan={5} className="empty-state">Sin producciones en este período</td></tr>
                             ) : historial.map((p) => (
                                 <tr key={p.id}>
                                     <td>{new Date(p.fecha).toLocaleDateString()}</td>
@@ -157,6 +222,20 @@ export default function Produccion() {
                                     <td>{p.producto_nombre}</td>
                                     <td>{p.cantidad_producida} und</td>
                                     <td>${parseFloat(p.costo_total).toFixed(2)}</td>
+                                    <td>
+                                        {p.estado === 'ANULADA' ? (
+                                            <span className="badge badge-danger">Anulada</span>
+                                        ) : (
+                                            <span className="badge badge-success">OK</span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {p.estado !== 'ANULADA' && (
+                                            <button className="btn btn-outline btn-sm" onClick={() => anular(p.id)} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+                                                <MdCancel /> Anular
+                                            </button>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -166,3 +245,4 @@ export default function Produccion() {
         </div>
     );
 }
+

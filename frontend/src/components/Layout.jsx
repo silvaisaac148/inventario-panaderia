@@ -2,13 +2,14 @@
  * Layout — Sidebar + Main content with responsive hamburger menu.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { notificacionesAPI } from '../services/api';
 import {
     MdDashboard, MdInventory, MdShoppingCart, MdFactory,
     MdReceipt, MdUploadFile, MdMenu, MdClose, MdLogout,
-    MdMenuBook, MdPointOfSale,
+    MdMenuBook, MdPointOfSale, MdNotifications, MdNotificationsNone
 } from 'react-icons/md';
 
 const navItems = [
@@ -23,12 +24,32 @@ const navItems = [
 
 export default function Layout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [notificaciones, setNotificaciones] = useState([]);
+    const [conteoNotif, setConteoNotif] = useState(0);
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+
+    const cargarNotificaciones = () => {
+        if (!user) return;
+        notificacionesAPI.conteo().then(r => setConteoNotif(r.data.count));
+        notificacionesAPI.listar().then(r => setNotificaciones(r.data));
+    };
+
+    useEffect(() => {
+        cargarNotificaciones();
+        const interval = setInterval(cargarNotificaciones, 60000); // Polling cada minuto
+        return () => clearInterval(interval);
+    }, [user]);
 
     const handleLogout = () => {
         logout();
         navigate('/login');
+    };
+
+    const marcarLeida = async (id) => {
+        await notificacionesAPI.leer([id]);
+        cargarNotificaciones();
     };
 
     return (
@@ -44,9 +65,11 @@ export default function Layout() {
 
             {/* Sidebar */}
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-                <div className="sidebar-header">
-                    <span className="logo">🏭</span>
-                    <h2>Inventario</h2>
+                <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span className="logo">🏭</span>
+                        <h2>Inventario</h2>
+                    </div>
                 </div>
 
                 <nav className="sidebar-nav">
@@ -66,6 +89,32 @@ export default function Layout() {
                 <div className="sidebar-footer">
                     {user && (
                         <>
+                            <div className="notification-bell-container" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                                <button className="notification-bell" onClick={() => setNotifOpen(!notifOpen)}>
+                                    {conteoNotif > 0 ? <MdNotifications className="text-danger" /> : <MdNotificationsNone />}
+                                    {conteoNotif > 0 && <span className="notification-badge">{conteoNotif}</span>}
+                                </button>
+                                {notifOpen && (
+                                    <div className="notification-panel" style={{ bottom: '100%', top: 'auto', left: '0', marginBottom: '0.5rem', width: '250px' }}>
+                                        <div className="notification-title">Notificaciones</div>
+                                        <div className="notification-list">
+                                            {notificaciones.length === 0 ? (
+                                                <div className="notification-empty">No tienes notificaciones pendientes.</div>
+                                            ) : (
+                                                notificaciones.map(n => (
+                                                    <div key={n.id} className="notification-item" onClick={() => marcarLeida(n.id)}>
+                                                        <strong style={{ display: 'block', fontSize: '0.85rem' }}>{n.titulo}</strong>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{n.mensaje}</span>
+                                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                                                            {new Date(n.fecha).toLocaleDateString()} {new Date(n.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <div style={{ marginBottom: '0.5rem' }}>
                                 <strong>{user.nombre}</strong>
                                 <br />

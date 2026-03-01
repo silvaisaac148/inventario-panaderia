@@ -94,6 +94,15 @@ async def eliminar_receta(db: AsyncSession, receta_id: UUID) -> bool:
     receta = await db.get(Receta, receta_id)
     if not receta:
         return False
+        
+    from sqlalchemy import delete
+    from app.models.receta import RecetaDetalle
+    from app.models.produccion import Produccion
+    
+    # ⚠️ Forzar borrado en cascada para SQLite
+    await db.execute(delete(Produccion).where(Produccion.receta_id == receta_id))
+    await db.execute(delete(RecetaDetalle).where(RecetaDetalle.receta_id == receta_id))
+        
     await db.delete(receta)
     return True
 

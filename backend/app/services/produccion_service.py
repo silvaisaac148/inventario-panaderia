@@ -9,6 +9,7 @@ Flujo:
 6. Calcula costo de producción
 """
 
+from datetime import datetime
 from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -19,6 +20,7 @@ from app.models.producto import Producto
 from app.models.produccion import Produccion
 from app.models.movimiento import MovimientoStock
 from app.services.ingrediente_service import FACTORES_A_GRAMOS
+from app.services import notificacion_service
 
 
 async def verificar_stock(
@@ -154,6 +156,9 @@ async def registrar_produccion(
 
     await db.flush()
 
+    # Verificar stock bajo para ingredientes que acaban de descontarse
+    await notificacion_service.verificar_stock_y_notificar(db)
+
     return {
         "produccion_id": str(produccion.id),
         "receta": receta.nombre,
@@ -166,14 +171,93 @@ async def registrar_produccion(
     }
 
 
-async def historial_producciones(db: AsyncSession) -> list[Produccion]:
-    result = await db.execute(
+async def anular_produccion(db: AsyncSession, produccion_id: UUID) -> dict:
+    """Anula una producción devolviendo los ingredientes al stock y restando los productos terminados."""
+    query = select(Produccion).options(
+        selectinload(Produccion.receta).selectinload(Receta.detalles).selectinload(RecetaDetalle.ingrediente),
+        selectinload(Produccion.receta).selectinload(Receta.producto)
+    ).where(Produccion.id == produccion_id)
+    
+    result = await db.execute(query)
+    produccion = result.scalar_one_or_none()
+
+    if not produccion:
+        raise ValueError("Producción no encontrada")
+
+    if produccion.estado == "ANULADA":
+        raise ValueError("Esta producción ya fue anulada")
+
+    receta = produccion.receta
+    producto = receta.producto
+    cantidad = produccion.cantidad_producida
+
+    # 1. Verificar si hay suficente stock de producto terminado para descontar
+    if float(producto.stock_actual) < cantidad:
+        raise ValueError(f"No se puede anular porque ya se han vendido o usado {cantidad - float(producto.stock_actual)} unidades del producto terminado. Debe haber al menos {cantidad} en stock.")
+
+    # 2. Descontar stock de producto terminado
+    producto.stock_actual = float(producto.stock_actual) - cantidad
+
+    # 3. Reintegrar ingredientes
+    ingredientes_devueltos = []
+    for detalle in receta.detalles:
+        ingrediente = detalle.ingrediente
+        cantidad_necesaria = float(detalle.cantidad) * cantidad / receta.rendimiento
+
+        # Convertir a unidad del ingrediente
+        factor_detalle = FACTORES_A_GRAMOS.get(detalle.unidad, 1)
+        factor_ingrediente = FACTORES_A_GRAMOS.get(ingrediente.unidad_medida, 1)
+        cantidad_a_devolver = (cantidad_necesaria * factor_detalle) / factor_ingrediente
+
+        # Reintegrar stock
+        ingrediente.stock_actual = float(ingrediente.stock_actual) + cantidad_a_devolver
+        
+        # Calcular costo devuelto
+        costo_ingrediente = cantidad_a_devolver * float(ingrediente.costo_unitario)
+
+        # Registrar movimiento de entrada manual
+        movimiento = MovimientoStock(
+            ingrediente_id=ingrediente.id,
+            tipo="AJUSTE", # Ajuste positivo 
+            cantidad=cantidad_a_devolver,
+            costo_total=costo_ingrediente,
+            referencia=f"Anulación de producción: {receta.nombre} x{cantidad}",
+        )
+        db.add(movimiento)
+        ingredientes_devueltos.append({"ingrediente": ingrediente.nombre, "cantidad_devuelta": cantidad_a_devolver})
+
+    produccion.estado = "ANULADA"
+    
+    await db.flush()
+
+    return {
+        "produccion_id": str(produccion.id),
+        "receta": receta.nombre,
+        "estado": "ANULADA",
+        "productos_descontados": cantidad,
+        "ingredientes_devueltos": ingredientes_devueltos
+    }
+
+
+async def historial_producciones(
+    db: AsyncSession,
+    fecha_desde: datetime | None = None,
+    fecha_hasta: datetime | None = None,
+) -> list[Produccion]:
+    query = (
         select(Produccion)
         .options(
             selectinload(Produccion.receta).selectinload(Receta.producto)
         )
-        .order_by(Produccion.fecha.desc())
     )
+
+    if fecha_desde:
+        query = query.where(Produccion.fecha >= fecha_desde)
+    if fecha_hasta:
+        query = query.where(Produccion.fecha <= fecha_hasta)
+
+    query = query.order_by(Produccion.fecha.desc())
+    result = await db.execute(query)
     return result.scalars().all()
 
 
