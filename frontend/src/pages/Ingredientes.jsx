@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { ingredientesAPI } from '../services/api';
-import { MdAdd, MdEdit, MdDelete, MdShoppingCart, MdClose, MdHistory } from 'react-icons/md';
+import { MdAdd, MdEdit, MdShoppingCart, MdClose, MdHistory } from 'react-icons/md';
 
 const TIPO_BADGE = {
     COMPRA: 'badge-success',
@@ -77,17 +77,6 @@ export default function Ingredientes() {
             cargar();
         } catch (err) {
             setMsg({ tipo: 'danger', texto: err.response?.data?.detail || 'Error en compra' });
-        }
-    };
-
-    const handleEliminar = async (item) => {
-        if (!confirm(`¿Eliminar "${item.nombre}"?`)) return;
-        try {
-            await ingredientesAPI.eliminar(item.id);
-            setMsg({ tipo: 'success', texto: 'Ingrediente eliminado' });
-            cargar();
-        } catch (err) {
-            setMsg({ tipo: 'danger', texto: 'Error al eliminar' });
         }
     };
 
@@ -184,9 +173,6 @@ export default function Ingredientes() {
                                         </button>
                                         <button className="btn btn-outline btn-sm" title="Editar" onClick={() => abrirEditar(item)}>
                                             <MdEdit />
-                                        </button>
-                                        <button className="btn btn-danger btn-sm" title="Eliminar" onClick={() => handleEliminar(item)}>
-                                            <MdDelete />
                                         </button>
                                     </div>
                                 </td>
