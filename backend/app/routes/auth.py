@@ -7,16 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.usuario import Usuario
-from app.utils.auth import hash_password, verify_password, crear_token, get_current_user
+from app.utils.auth import verify_password, crear_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
-
-
-class RegistroRequest(BaseModel):
-    email: str = Field(..., examples=["admin@panaderia.com"])
-    password: str = Field(..., min_length=6)
-    nombre: str = Field(..., min_length=1, examples=["Administrador"])
-    rol: str = Field(default="operador", pattern="^(admin|operador)$")
 
 
 class LoginResponse(BaseModel):
@@ -35,34 +28,9 @@ class UsuarioResponse(BaseModel):
     activo: bool
 
 
-@router.post("/registro", response_model=UsuarioResponse, status_code=201)
-async def registro(data: RegistroRequest, db: AsyncSession = Depends(get_db)):
-    try:
-        # Verificar si el email ya existe
-        result = await db.execute(select(Usuario).where(Usuario.email == data.email))
-        if result.scalar_one_or_none():
-            raise HTTPException(400, "El email ya está registrado")
-
-        usuario = Usuario(
-            email=data.email,
-            password_hash=hash_password(data.password),
-            nombre=data.nombre,
-            rol=data.rol,
-        )
-        db.add(usuario)
-        await db.flush()
-
-        return UsuarioResponse(
-            id=str(usuario.id),
-            email=usuario.email,
-            nombre=usuario.nombre,
-            rol=usuario.rol,
-            activo=usuario.activo,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(500, f"Error en registro: {type(e).__name__}: {str(e)}")
+@router.post("/registro", status_code=403, include_in_schema=False)
+async def registro():
+    raise HTTPException(403, "Registro deshabilitado. Los usuarios se crean directamente en el servidor.")
 
 
 @router.post("/login", response_model=LoginResponse)
