@@ -46,41 +46,34 @@ async def get_db():
             await session.close()
 
 
-async def _run_migrations(conn):
-    """Migraciones incrementales seguras (idempotentes)."""
-    # Migración: agregar columna estado a ventas (v1.1)
-    try:
-        await conn.execute(
-            text("ALTER TABLE ventas ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVA'")
-        )
-    except Exception:
-        pass  # Ya existe, todo bien
-        
-    # Migración: agregar columna costo_unitario a ventas (v1.2)
-    try:
-        await conn.execute(
-            text("ALTER TABLE ventas ADD COLUMN costo_unitario NUMERIC(12, 4) NOT NULL DEFAULT 0.0000")
-        )
-    except Exception:
-        pass  # Ya existe, todo bien
+async def _run_migrations():
+    """
+    Migraciones incrementales seguras e idempotentes.
 
-    # Migración: mano_de_obra, porcentaje_ganancia, porcentaje_merma en recetas (v1.3)
-    for col, tipo, default in [
-        ("mano_de_obra", "NUMERIC(12, 4)", "0"),
-        ("porcentaje_ganancia", "NUMERIC(5, 2)", "0"),
-        ("porcentaje_merma", "NUMERIC(5, 2)", "0"),
-    ]:
+    Cada sentencia corre en su propia transacción para que un fallo
+    (columna ya existe) en PostgreSQL no aborte las migraciones siguientes.
+    """
+    migraciones = [
+        # v1.1 — estado en ventas
+        "ALTER TABLE ventas ADD COLUMN estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVA'",
+        # v1.2 — costo_unitario en ventas
+        "ALTER TABLE ventas ADD COLUMN costo_unitario NUMERIC(12, 4) NOT NULL DEFAULT 0.0000",
+        # v1.3 — campos de costeo en recetas
+        "ALTER TABLE recetas ADD COLUMN mano_de_obra NUMERIC(12, 4) NOT NULL DEFAULT 0",
+        "ALTER TABLE recetas ADD COLUMN porcentaje_ganancia NUMERIC(5, 2) NOT NULL DEFAULT 0",
+        "ALTER TABLE recetas ADD COLUMN porcentaje_merma NUMERIC(5, 2) NOT NULL DEFAULT 0",
+    ]
+    for sql in migraciones:
         try:
-            await conn.execute(
-                text(f"ALTER TABLE recetas ADD COLUMN {col} {tipo} NOT NULL DEFAULT {default}")
-            )
+            async with engine.begin() as conn:
+                await conn.execute(text(sql))
         except Exception:
-            pass  # Ya existe, todo bien
+            pass  # Columna ya existe — ignorar
 
 
 async def init_db():
-    """Crear todas las tablas (solo para desarrollo) y ejecutar migraciones."""
+    """Crear todas las tablas y ejecutar migraciones."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await _run_migrations(conn)
+    await _run_migrations()
 
