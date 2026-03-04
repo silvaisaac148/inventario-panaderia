@@ -22,6 +22,9 @@ class Receta(Base):
     )  # Cuántas unidades produce esta receta
     notas: Mapped[str | None] = mapped_column(Text, nullable=True)
     activa: Mapped[bool] = mapped_column(Boolean, default=True)
+    mano_de_obra: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    porcentaje_ganancia: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+    porcentaje_merma: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=0)
     creado_en: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

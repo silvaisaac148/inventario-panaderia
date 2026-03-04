@@ -9,7 +9,7 @@ import { notificacionesAPI } from '../services/api';
 import {
     MdDashboard, MdInventory, MdShoppingCart, MdFactory,
     MdReceipt, MdUploadFile, MdMenu, MdClose, MdLogout,
-    MdMenuBook, MdPointOfSale, MdNotifications, MdNotificationsNone
+    MdMenuBook, MdPointOfSale, MdNotifications, MdNotificationsNone, MdCloudUpload
 } from 'react-icons/md';
 
 const navItems = [
@@ -20,6 +20,7 @@ const navItems = [
     { to: '/produccion', icon: <MdFactory />, label: 'Producción' },
     { to: '/ventas', icon: <MdPointOfSale />, label: 'Ventas' },
     { to: '/excel', icon: <MdUploadFile />, label: 'Excel' },
+    { to: '/importar', icon: <MdCloudUpload />, label: 'Importar' },
 ];
 
 export default function Layout() {

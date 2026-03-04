@@ -96,8 +96,8 @@ export default function Productos() {
                         ) : items.map((item) => (
                             <tr key={item.id}>
                                 <td><strong>{item.nombre}</strong></td>
-                                <td>${parseFloat(item.precio_venta).toFixed(2)}</td>
-                                <td>${parseFloat(item.costo_unitario).toFixed(2)}</td>
+                                <td>R${parseFloat(item.precio_venta).toFixed(2)}</td>
+                                <td>R${parseFloat(item.costo_unitario).toFixed(2)}</td>
                                 <td>
                                     <span className={`badge ${item.margen > 30 ? 'badge-success' : item.margen > 0 ? 'badge-warning' : 'badge-danger'}`}>
                                         {item.margen}%
@@ -137,7 +137,7 @@ export default function Productos() {
                             </div>
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>Precio de venta ($)</label>
+                                    <label>Precio de venta (R$)</label>
                                     <input type="number" step="0.01" min="0" value={form.precio_venta} onChange={(e) => setForm({ ...form, precio_venta: parseFloat(e.target.value) || 0 })} />
                                 </div>
                                 <div className="form-group">

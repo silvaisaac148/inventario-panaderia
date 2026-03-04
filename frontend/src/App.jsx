@@ -12,6 +12,7 @@ import Recetas from './pages/Recetas';
 import Produccion from './pages/Produccion';
 import Ventas from './pages/Ventas';
 import Excel from './pages/Excel';
+import Importar from './pages/Importar';
 import Login from './pages/Login';
 
 function ProtectedRoute({ children }) {
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="produccion" element={<Produccion />} />
         <Route path="ventas" element={<Ventas />} />
         <Route path="excel" element={<Excel />} />
+        <Route path="importar" element={<Importar />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

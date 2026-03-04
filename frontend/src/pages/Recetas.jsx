@@ -1,10 +1,12 @@
 /**
- * Recetas — CRUD con ingredientes y costo automático.
+ * Recetas — CRUD con ingredientes, mano de obra, ganancia, merma y costo automático.
  */
 
 import { useState, useEffect } from 'react';
 import { recetasAPI, ingredientesAPI, productosAPI } from '../services/api';
 import { MdAdd, MdDelete, MdClose, MdCalculate, MdRemoveCircle } from 'react-icons/md';
+
+const UNIDADES = ['g', 'kg', 'ml', 'lts', 'und', 'hoj'];
 
 export default function Recetas() {
     const [recetas, setRecetas] = useState([]);
@@ -14,7 +16,11 @@ export default function Recetas() {
     const [modal, setModal] = useState(null);
     const [costoModal, setCostoModal] = useState(null);
     const [msg, setMsg] = useState(null);
-    const [form, setForm] = useState({ nombre: '', producto_id: '', rendimiento: 1, notas: '', detalles: [] });
+    const [form, setForm] = useState({
+        nombre: '', producto_id: '', rendimiento: 1, notas: '',
+        mano_de_obra: 0, porcentaje_ganancia: 30, porcentaje_merma: 0,
+        detalles: [],
+    });
 
     const cargar = async () => {
         setLoading(true);
@@ -29,16 +35,13 @@ export default function Recetas() {
 
     useEffect(() => { cargar(); }, []);
 
-    const resetForm = () => { setForm({ nombre: '', producto_id: '', rendimiento: 1, notas: '', detalles: [] }); setModal(null); };
-
-    const addDetalle = () => {
-        setForm({ ...form, detalles: [...form.detalles, { ingrediente_id: '', cantidad: 0, unidad: 'g' }] });
+    const resetForm = () => {
+        setForm({ nombre: '', producto_id: '', rendimiento: 1, notas: '', mano_de_obra: 0, porcentaje_ganancia: 30, porcentaje_merma: 0, detalles: [] });
+        setModal(null);
     };
 
-    const removeDetalle = (idx) => {
-        setForm({ ...form, detalles: form.detalles.filter((_, i) => i !== idx) });
-    };
-
+    const addDetalle = () => setForm({ ...form, detalles: [...form.detalles, { ingrediente_id: '', cantidad: 0, unidad: 'g' }] });
+    const removeDetalle = (idx) => setForm({ ...form, detalles: form.detalles.filter((_, i) => i !== idx) });
     const updateDetalle = (idx, field, value) => {
         const detalles = [...form.detalles];
         detalles[idx] = { ...detalles[idx], [field]: value };
@@ -52,6 +55,9 @@ export default function Recetas() {
             const data = {
                 ...form,
                 rendimiento: parseInt(form.rendimiento),
+                mano_de_obra: parseFloat(form.mano_de_obra) || 0,
+                porcentaje_ganancia: parseFloat(form.porcentaje_ganancia) || 0,
+                porcentaje_merma: parseFloat(form.porcentaje_merma) || 0,
                 detalles: form.detalles.map(d => ({ ...d, cantidad: parseFloat(d.cantidad) })),
             };
             await recetasAPI.crear(data);
@@ -77,11 +83,14 @@ export default function Recetas() {
 
     if (loading) return <div className="loading"><div className="spinner"></div></div>;
 
+    const c = costoModal;
+    const diferenciaColor = c?.diferencia_precio >= 0 ? 'var(--success)' : 'var(--danger)';
+
     return (
         <div>
             <div className="page-header">
                 <h1>👨‍🍳 Recetas</h1>
-                <p>Fórmulas de producción</p>
+                <p>Fórmulas de producción con costo, mano de obra y margen</p>
             </div>
 
             {msg && (
@@ -97,16 +106,18 @@ export default function Recetas() {
 
             <div className="table-container">
                 <table>
-                    <thead><tr><th>Receta</th><th>Producto</th><th>Rendimiento</th><th>Ingredientes</th><th>Acciones</th></tr></thead>
+                    <thead><tr><th>Receta</th><th>Producto</th><th>Rinde</th><th>M.O./und</th><th>Ganancia</th><th>Ingredientes</th><th>Acciones</th></tr></thead>
                     <tbody>
                         {recetas.length === 0 ? (
-                            <tr><td colSpan={5} className="empty-state">No hay recetas. ¡Crea la primera!</td></tr>
+                            <tr><td colSpan={7} className="empty-state">No hay recetas. ¡Crea la primera!</td></tr>
                         ) : recetas.map((r) => (
                             <tr key={r.id}>
                                 <td><strong>{r.nombre}</strong></td>
                                 <td>{r.producto_nombre || '—'}</td>
                                 <td>{r.rendimiento} und</td>
-                                <td>{r.detalles?.length || 0} ingredientes</td>
+                                <td>{r.mano_de_obra > 0 ? `R$${parseFloat(r.mano_de_obra).toFixed(2)}` : '—'}</td>
+                                <td>{r.porcentaje_ganancia > 0 ? `${r.porcentaje_ganancia}%` : '—'}</td>
+                                <td>{r.detalles?.length || 0}</td>
                                 <td>
                                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                                         <button className="btn btn-outline btn-sm" onClick={() => verCosto(r)} title="Calcular costo"><MdCalculate /></button>
@@ -122,7 +133,7 @@ export default function Recetas() {
             {/* Modal Crear */}
             {modal === 'crear' && (
                 <div className="modal-overlay" onClick={resetForm}>
-                    <div className="modal" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+                    <div className="modal" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h2>➕ Nueva Receta</h2>
                             <button className="close-btn" onClick={resetForm}><MdClose /></button>
@@ -141,30 +152,46 @@ export default function Recetas() {
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>Rendimiento (unidades)</label>
+                                    <label>Rendimiento (unidades por lote)</label>
                                     <input type="number" min="1" value={form.rendimiento} onChange={(e) => setForm({ ...form, rendimiento: e.target.value })} required />
                                 </div>
                             </div>
 
-                            <h3 className="section-title" style={{ marginTop: '1rem' }}>🥖 Ingredientes de la receta</h3>
+                            {/* Costos y margen */}
+                            <h3 className="section-title" style={{ marginTop: '1rem' }}>💰 Costo y Precio</h3>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Mano de obra (R$/und producida)</label>
+                                    <input type="number" step="0.01" min="0" value={form.mano_de_obra} onChange={(e) => setForm({ ...form, mano_de_obra: e.target.value })} placeholder="Ej: 3.00" />
+                                </div>
+                                <div className="form-group">
+                                    <label>% Ganancia (markup sobre costo)</label>
+                                    <input type="number" step="0.1" min="0" value={form.porcentaje_ganancia} onChange={(e) => setForm({ ...form, porcentaje_ganancia: e.target.value })} placeholder="Ej: 30" />
+                                </div>
+                                <div className="form-group">
+                                    <label>% Merma esperada</label>
+                                    <input type="number" step="0.1" min="0" max="99" value={form.porcentaje_merma} onChange={(e) => setForm({ ...form, porcentaje_merma: e.target.value })} placeholder="Ej: 5" />
+                                </div>
+                            </div>
+
+                            <h3 className="section-title" style={{ marginTop: '1rem' }}>🥖 Ingredientes</h3>
                             {form.detalles.map((d, idx) => (
                                 <div key={idx} className="form-row" style={{ alignItems: 'end' }}>
                                     <div className="form-group">
                                         <label>Ingrediente</label>
                                         <select value={d.ingrediente_id} onChange={(e) => updateDetalle(idx, 'ingrediente_id', e.target.value)} required>
                                             <option value="">Seleccionar...</option>
-                                            {ingredientes.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
+                                            {ingredientes.map((i) => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad_medida})</option>)}
                                         </select>
                                     </div>
                                     <div className="form-group">
                                         <label>Cantidad</label>
-                                        <input type="number" step="0.01" min="0.01" value={d.cantidad} onChange={(e) => updateDetalle(idx, 'cantidad', e.target.value)} required />
+                                        <input type="number" step="0.001" min="0.001" value={d.cantidad} onChange={(e) => updateDetalle(idx, 'cantidad', e.target.value)} required />
                                     </div>
                                     <div className="form-group">
                                         <label>Unidad</label>
                                         <select value={d.unidad} onChange={(e) => updateDetalle(idx, 'unidad', e.target.value)}>
-                                            <option value="g">g</option><option value="kg">kg</option>
-                                            <option value="ml">ml</option><option value="lts">lts</option><option value="und">und</option>
+                                            {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
                                         </select>
                                     </div>
                                     <button type="button" className="btn btn-danger btn-sm" onClick={() => removeDetalle(idx)} style={{ marginBottom: '1rem' }}>
@@ -176,6 +203,10 @@ export default function Recetas() {
                                 <MdAdd /> Agregar ingrediente
                             </button>
 
+                            <div className="form-group">
+                                <label>Notas (opcional)</label>
+                                <input value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Instrucciones, observaciones..." />
+                            </div>
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-outline" onClick={resetForm}>Cancelar</button>
                                 <button type="submit" className="btn btn-primary">Crear Receta</button>
@@ -186,41 +217,96 @@ export default function Recetas() {
             )}
 
             {/* Modal Costo */}
-            {costoModal && (
+            {c && (
                 <div className="modal-overlay" onClick={() => setCostoModal(null)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal" style={{ maxWidth: '580px' }} onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>💰 Costo: {costoModal.receta}</h2>
+                            <h2>💰 Costo: {c.receta}</h2>
                             <button className="close-btn" onClick={() => setCostoModal(null)}><MdClose /></button>
                         </div>
-                        <div className="stats-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+
+                        {/* Resumen de costos */}
+                        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: '1rem' }}>
                             <div className="stat-card">
                                 <div className="stat-info">
-                                    <h3>${costoModal.costo_total?.toFixed(2)}</h3>
-                                    <p>Costo Total</p>
+                                    <h3>R${c.costo_ingredientes?.toFixed(2)}</h3>
+                                    <p>Ingredientes / lote ({c.rendimiento} und)</p>
                                 </div>
                             </div>
                             <div className="stat-card">
                                 <div className="stat-info">
-                                    <h3>${costoModal.costo_unitario?.toFixed(2)}</h3>
-                                    <p>Costo Unitario ({costoModal.rendimiento} und)</p>
+                                    <h3>R${c.costo_ingredientes_por_unidad?.toFixed(4)}</h3>
+                                    <p>Ingredientes / unidad{c.porcentaje_merma > 0 ? ` (sin merma)` : ''}</p>
                                 </div>
                             </div>
+                            {c.porcentaje_merma > 0 && (
+                                <div className="stat-card">
+                                    <div className="stat-info">
+                                        <h3>R${c.costo_ingredientes_ajustado_merma?.toFixed(2)}</h3>
+                                        <p>Con merma {c.porcentaje_merma}% / lote</p>
+                                    </div>
+                                </div>
+                            )}
+                            {c.mano_de_obra_por_unidad > 0 && (
+                                <div className="stat-card">
+                                    <div className="stat-info">
+                                        <h3>R${c.mano_de_obra_por_unidad?.toFixed(4)}</h3>
+                                        <p>Mano de obra / unidad</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="stat-card" style={{ borderLeft: '3px solid var(--warning)' }}>
+                                <div className="stat-info">
+                                    <h3>R${c.costo_total_por_unidad?.toFixed(4)}</h3>
+                                    <p>Costo total / unidad</p>
+                                </div>
+                            </div>
+                            {c.precio_sugerido > 0 && (
+                                <div className="stat-card" style={{ borderLeft: '3px solid var(--success)' }}>
+                                    <div className="stat-info">
+                                        <h3>R${c.precio_sugerido?.toFixed(2)}</h3>
+                                        <p>Precio sugerido ({c.porcentaje_ganancia}% markup)</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <h4 style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem' }}>Desglose:</h4>
+
+                        {/* Comparación precio actual vs sugerido */}
+                        {c.precio_venta_actual > 0 && c.precio_sugerido > 0 && (
+                            <div className="alert" style={{ backgroundColor: 'rgba(108,92,231,0.1)', border: '1px solid rgba(108,92,231,0.3)', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                                Precio actual: <strong>R${c.precio_venta_actual?.toFixed(2)}</strong>
+                                &nbsp;|&nbsp; Precio sugerido: <strong>R${c.precio_sugerido?.toFixed(2)}</strong>
+                                &nbsp;|&nbsp; Diferencia: <strong style={{ color: diferenciaColor }}>
+                                    {c.diferencia_precio >= 0 ? '+' : ''}R${c.diferencia_precio?.toFixed(2)}
+                                </strong>
+                                {c.diferencia_precio < 0 && <span style={{ color: 'var(--danger)' }}> ⚠️ Precio actual está por debajo del costo</span>}
+                            </div>
+                        )}
+
+                        {/* Desglose por ingrediente */}
+                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Desglose por ingrediente:</h4>
                         <div className="table-container">
                             <table>
-                                <thead><tr><th>Ingrediente</th><th>Cantidad</th><th>Costo</th></tr></thead>
+                                <thead>
+                                    <tr>
+                                        <th>Ingrediente</th>
+                                        <th>Cantidad</th>
+                                        <th>Costo</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    {costoModal.detalles?.map((d, i) => (
+                                    {c.detalles?.map((d, i) => (
                                         <tr key={i}>
                                             <td>{d.ingrediente}</td>
                                             <td>{d.cantidad} {d.unidad}</td>
-                                            <td>${d.costo_total?.toFixed(4)}</td>
+                                            <td>R${d.costo_total?.toFixed(4)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                        <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                            <button className="btn btn-outline" onClick={() => setCostoModal(null)}>Cerrar</button>
                         </div>
                     </div>
                 </div>

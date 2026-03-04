@@ -67,7 +67,7 @@ export default function Ventas() {
                 nota: form.nota || null,
             };
             const res = await ventasAPI.registrar(data);
-            setMsg({ tipo: 'success', texto: `✅ Venta: ${res.data.cantidad}x ${res.data.producto} = $${res.data.total.toFixed(2)}` });
+            setMsg({ tipo: 'success', texto: `✅ Venta: ${res.data.cantidad}x ${res.data.producto} = R$${res.data.total.toFixed(2)}` });
             setForm({ producto_id: '', cantidad: 1, precio_unitario: '', nota: '' });
             cargar(fechaDesde, fechaHasta);
         } catch (err) {
@@ -94,7 +94,7 @@ export default function Ventas() {
                 nota: editForm.nota || null,
             };
             const res = await ventasAPI.editar(editModal.id, data);
-            setMsg({ tipo: 'success', texto: `✅ Venta editada: ${res.data.cantidad}x ${res.data.producto} = $${res.data.total.toFixed(2)}` });
+            setMsg({ tipo: 'success', texto: `✅ Venta editada: ${res.data.cantidad}x ${res.data.producto} = R$${res.data.total.toFixed(2)}` });
             setEditModal(null);
             cargar(fechaDesde, fechaHasta);
         } catch (err) {
@@ -138,7 +138,7 @@ export default function Ventas() {
                             <select value={form.producto_id} onChange={(e) => setForm({ ...form, producto_id: e.target.value })} required>
                                 <option value="">Seleccionar...</option>
                                 {productos.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.nombre} (stock: {parseFloat(p.stock_actual).toFixed(0)}) — ${parseFloat(p.precio_venta).toFixed(2)}</option>
+                                    <option key={p.id} value={p.id}>{p.nombre} (stock: {parseFloat(p.stock_actual).toFixed(0)}) — R${parseFloat(p.precio_venta).toFixed(2)}</option>
                                 ))}
                             </select>
                         </div>
@@ -148,12 +148,12 @@ export default function Ventas() {
                         </div>
                         <div className="form-group">
                             <label>Precio unit. (opcional)</label>
-                            <input type="number" step="0.01" min="0" value={form.precio_unitario} onChange={(e) => setForm({ ...form, precio_unitario: e.target.value })} placeholder={productoSelec ? `Default: $${parseFloat(productoSelec.precio_venta).toFixed(2)}` : ''} />
+                            <input type="number" step="0.01" min="0" value={form.precio_unitario} onChange={(e) => setForm({ ...form, precio_unitario: e.target.value })} placeholder={productoSelec ? `Default: R$${parseFloat(productoSelec.precio_venta).toFixed(2)}` : ''} />
                         </div>
                     </div>
                     {total > 0 && (
                         <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
-                            💰 Total: <strong>${total.toFixed(2)}</strong> ({form.cantidad} × ${precioFinal.toFixed(2)})
+                            💰 Total: <strong>R${total.toFixed(2)}</strong> ({form.cantidad} × R${precioFinal.toFixed(2)})
                         </div>
                     )}
                     <div className="form-group">
@@ -209,8 +209,8 @@ export default function Ventas() {
                                         <td>{new Date(v.fecha).toLocaleDateString()}</td>
                                         <td><strong>{v.producto_nombre}</strong></td>
                                         <td>{v.cantidad}</td>
-                                        <td>${parseFloat(v.precio_unitario).toFixed(2)}</td>
-                                        <td><strong>${parseFloat(v.total).toFixed(2)}</strong></td>
+                                        <td>R${parseFloat(v.precio_unitario).toFixed(2)}</td>
+                                        <td><strong>R${parseFloat(v.total).toFixed(2)}</strong></td>
                                         <td>
                                             <span className={`badge ${anulada ? 'badge-danger' : 'badge-success'}`}>
                                                 {v.estado || 'ACTIVA'}
@@ -261,7 +261,7 @@ export default function Ventas() {
                         </div>
                         {editForm.cantidad && editForm.precio_unitario && (
                             <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
-                                💰 Nuevo total: <strong>${(parseFloat(editForm.cantidad) * parseFloat(editForm.precio_unitario)).toFixed(2)}</strong>
+                                💰 Nuevo total: <strong>R${(parseFloat(editForm.cantidad) * parseFloat(editForm.precio_unitario)).toFixed(2)}</strong>
                             </div>
                         )}
                         <div className="modal-actions">
@@ -284,7 +284,7 @@ export default function Ventas() {
                             ¿Estás seguro de anular esta venta?
                         </div>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
-                            <strong>{anularModal.producto_nombre}</strong> — {anularModal.cantidad} unidades × ${parseFloat(anularModal.precio_unitario).toFixed(2)} = <strong>${parseFloat(anularModal.total).toFixed(2)}</strong>
+                            <strong>{anularModal.producto_nombre}</strong> — {anularModal.cantidad} unidades × R${parseFloat(anularModal.precio_unitario).toFixed(2)} = <strong>R${parseFloat(anularModal.total).toFixed(2)}</strong>
                         </p>
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>
                             Se devolverán <strong>{anularModal.cantidad} unidades</strong> al stock del producto.

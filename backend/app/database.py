@@ -64,6 +64,19 @@ async def _run_migrations(conn):
     except Exception:
         pass  # Ya existe, todo bien
 
+    # Migración: mano_de_obra, porcentaje_ganancia, porcentaje_merma en recetas (v1.3)
+    for col, tipo, default in [
+        ("mano_de_obra", "NUMERIC(12, 4)", "0"),
+        ("porcentaje_ganancia", "NUMERIC(5, 2)", "0"),
+        ("porcentaje_merma", "NUMERIC(5, 2)", "0"),
+    ]:
+        try:
+            await conn.execute(
+                text(f"ALTER TABLE recetas ADD COLUMN {col} {tipo} NOT NULL DEFAULT {default}")
+            )
+        except Exception:
+            pass  # Ya existe, todo bien
+
 
 async def init_db():
     """Crear todas las tablas (solo para desarrollo) y ejecutar migraciones."""

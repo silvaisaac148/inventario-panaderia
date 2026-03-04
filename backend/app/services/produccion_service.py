@@ -227,7 +227,20 @@ async def anular_produccion(db: AsyncSession, produccion_id: UUID) -> dict:
         ingredientes_devueltos.append({"ingrediente": ingrediente.nombre, "cantidad_devuelta": cantidad_a_devolver})
 
     produccion.estado = "ANULADA"
-    
+
+    # Recalcular costo promedio ponderado del producto tras quitar el lote anulado
+    stock_post_anulacion = float(producto.stock_actual)  # ya descontado arriba
+    costo_actual = float(producto.costo_unitario)
+    costo_lote = float(produccion.costo_total) / cantidad if cantidad > 0 else 0
+
+    if stock_post_anulacion > 0:
+        # Revertir el aporte del lote anulado al promedio ponderado
+        valor_total_pre = (stock_post_anulacion + cantidad) * costo_actual
+        valor_lote_anulado = cantidad * costo_lote
+        valor_restante = valor_total_pre - valor_lote_anulado
+        producto.costo_unitario = round(max(valor_restante / stock_post_anulacion, 0), 4)
+    # Si stock_post_anulacion == 0, no hay nada que recalcular
+
     await db.flush()
 
     return {

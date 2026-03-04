@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import init_db
-from app.routes import ingredientes, productos, recetas, produccion, ventas, excel, auth, reportes, notificaciones
+from app.routes import ingredientes, productos, recetas, produccion, ventas, excel, auth, reportes, notificaciones, importar
 
 settings = get_settings()
 
@@ -58,6 +58,7 @@ app.include_router(ventas.router, prefix=settings.API_PREFIX)
 app.include_router(excel.router, prefix=settings.API_PREFIX)
 app.include_router(reportes.router, prefix=settings.API_PREFIX)
 app.include_router(notificaciones.router, prefix=settings.API_PREFIX)
+app.include_router(importar.router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")

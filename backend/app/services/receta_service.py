@@ -39,6 +39,9 @@ async def crear_receta(db: AsyncSession, data: RecetaCreate) -> Receta:
         nombre=data.nombre,
         rendimiento=data.rendimiento,
         notas=data.notas,
+        mano_de_obra=getattr(data, 'mano_de_obra', 0) or 0,
+        porcentaje_ganancia=getattr(data, 'porcentaje_ganancia', 0) or 0,
+        porcentaje_merma=getattr(data, 'porcentaje_merma', 0) or 0,
     )
     db.add(receta)
     await db.flush()
@@ -109,6 +112,8 @@ async def eliminar_receta(db: AsyncSession, receta_id: UUID) -> bool:
 
 async def calcular_costo_receta(db: AsyncSession, receta_id: UUID) -> dict:
     """Calcula el costo total de una receta según los precios actuales de ingredientes."""
+    from app.services.ingrediente_service import FACTORES_A_GRAMOS
+
     receta = await obtener_receta(db, receta_id)
     if not receta:
         raise ValueError("Receta no encontrada")
@@ -118,24 +123,51 @@ async def calcular_costo_receta(db: AsyncSession, receta_id: UUID) -> dict:
 
     for detalle in receta.detalles:
         ingrediente = detalle.ingrediente
-        # Costo = costo_por_gramo × cantidad (en la unidad del detalle)
-        costo_ingrediente = float(ingrediente.costo_por_gramo) * float(detalle.cantidad)
+        # Convertir cantidad del detalle a la unidad base del ingrediente, luego multiplicar por costo
+        factor_detalle = FACTORES_A_GRAMOS.get(detalle.unidad, 1)
+        factor_ingrediente = FACTORES_A_GRAMOS.get(ingrediente.unidad_medida, 1)
+        cantidad_en_unidad_ingrediente = (float(detalle.cantidad) * factor_detalle) / factor_ingrediente
+        costo_ingrediente = cantidad_en_unidad_ingrediente * float(ingrediente.costo_unitario)
         costo_total += costo_ingrediente
 
         detalles_costo.append({
             "ingrediente": ingrediente.nombre,
             "cantidad": float(detalle.cantidad),
             "unidad": detalle.unidad,
+            "costo_unitario_ingrediente": float(ingrediente.costo_unitario),
+            "unidad_ingrediente": ingrediente.unidad_medida,
             "costo_por_gramo": float(ingrediente.costo_por_gramo),
             "costo_total": round(costo_ingrediente, 4),
         })
 
-    costo_unitario = costo_total / receta.rendimiento if receta.rendimiento > 0 else 0
+    rendimiento = receta.rendimiento if receta.rendimiento > 0 else 1
+    mano_de_obra = float(receta.mano_de_obra) if getattr(receta, 'mano_de_obra', None) else 0
+    porcentaje_ganancia = float(receta.porcentaje_ganancia) if getattr(receta, 'porcentaje_ganancia', None) else 0
+    porcentaje_merma = float(receta.porcentaje_merma) if getattr(receta, 'porcentaje_merma', None) else 0
+
+    # Ajuste por merma: si hay 10% de merma el costo real sube
+    factor_merma = 1 / (1 - porcentaje_merma / 100) if 0 < porcentaje_merma < 100 else 1
+    costo_ingredientes_ajustado = costo_total * factor_merma
+    costo_ingredientes_por_unidad = costo_ingredientes_ajustado / rendimiento
+    costo_total_por_unidad = costo_ingredientes_por_unidad + mano_de_obra
+    precio_sugerido = costo_total_por_unidad * (1 + porcentaje_ganancia / 100)
+    precio_venta_actual = float(receta.producto.precio_venta) if receta.producto else 0
 
     return {
         "receta": receta.nombre,
-        "rendimiento": receta.rendimiento,
+        "rendimiento": rendimiento,
+        "costo_ingredientes": round(costo_total, 4),
+        "costo_ingredientes_por_unidad": round(costo_total / rendimiento, 4),
+        "porcentaje_merma": porcentaje_merma,
+        "costo_ingredientes_ajustado_merma": round(costo_ingredientes_ajustado, 4),
+        "mano_de_obra_por_unidad": round(mano_de_obra, 4),
+        "costo_total_por_unidad": round(costo_total_por_unidad, 4),
+        "porcentaje_ganancia": porcentaje_ganancia,
+        "precio_sugerido": round(precio_sugerido, 4),
+        "precio_venta_actual": round(precio_venta_actual, 4),
+        "diferencia_precio": round(precio_venta_actual - precio_sugerido, 4),
+        # Compatibilidad con versión anterior
         "costo_total": round(costo_total, 4),
-        "costo_unitario": round(costo_unitario, 4),
+        "costo_unitario": round(costo_total / rendimiento, 4),
         "detalles": detalles_costo,
     }

@@ -110,6 +110,20 @@ export const reportesAPI = {
   resetDB: () => api.delete('/reportes/reset-db'),
 };
 
+// ---- Importación ----
+export const importarAPI = {
+  preview: (file) => {
+    const form = new FormData();
+    form.append('archivo', file);
+    return api.post('/importar/preview', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  ejecutar: (file) => {
+    const form = new FormData();
+    form.append('archivo', file);
+    return api.post('/importar/ejecutar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+};
+
 // ---- Notificaciones ----
 export const notificacionesAPI = {
   listar: () => api.get('/notificaciones/'),

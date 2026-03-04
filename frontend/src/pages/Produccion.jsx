@@ -166,10 +166,10 @@ export default function Produccion() {
                             <div className="stat-info"><h3>{resultado.cantidad_producida}</h3><p>Unidades</p></div>
                         </div>
                         <div className="stat-card">
-                            <div className="stat-info"><h3>${resultado.costo_total?.toFixed(2)}</h3><p>Costo Total</p></div>
+                            <div className="stat-info"><h3>R${resultado.costo_total?.toFixed(2)}</h3><p>Costo Total</p></div>
                         </div>
                         <div className="stat-card">
-                            <div className="stat-info"><h3>${resultado.costo_unitario?.toFixed(2)}</h3><p>Costo Unitario</p></div>
+                            <div className="stat-info"><h3>R${resultado.costo_unitario?.toFixed(2)}</h3><p>Costo Unitario</p></div>
                         </div>
                         <div className="stat-card">
                             <div className="stat-info"><h3>{resultado.stock_producto}</h3><p>Stock Producto</p></div>
@@ -221,7 +221,7 @@ export default function Produccion() {
                                     <td>{p.receta_nombre}</td>
                                     <td>{p.producto_nombre}</td>
                                     <td>{p.cantidad_producida} und</td>
-                                    <td>${parseFloat(p.costo_total).toFixed(2)}</td>
+                                    <td>R${parseFloat(p.costo_total).toFixed(2)}</td>
                                     <td>
                                         {p.estado === 'ANULADA' ? (
                                             <span className="badge badge-danger">Anulada</span>

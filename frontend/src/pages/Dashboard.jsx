@@ -157,7 +157,7 @@ export default function Dashboard() {
                 <div className="stat-card">
                     <div className="stat-icon green"><MdAttachMoney /></div>
                     <div className="stat-info">
-                        <h3>${(stats?.valor_inventario_total || 0).toLocaleString()}</h3>
+                        <h3>R${(stats?.valor_inventario_total || 0).toLocaleString()}</h3>
                         <p>Valor Inventario</p>
                     </div>
                 </div>
@@ -170,13 +170,13 @@ export default function Dashboard() {
                     <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
                         <div className="stat-card" style={{ borderLeft: '3px solid var(--success)' }}>
                             <div className="stat-info">
-                                <h3>${(ganancias.total_ingresos || 0).toLocaleString()}</h3>
+                                <h3>R${(ganancias.total_ingresos || 0).toLocaleString()}</h3>
                                 <p>Ingresos</p>
                             </div>
                         </div>
                         <div className="stat-card" style={{ borderLeft: '3px solid var(--danger)' }}>
                             <div className="stat-info">
-                                <h3>${(ganancias.total_costos || 0).toLocaleString()}</h3>
+                                <h3>R${(ganancias.total_costos || 0).toLocaleString()}</h3>
                                 <p>Costos</p>
                             </div>
                         </div>
@@ -184,7 +184,7 @@ export default function Dashboard() {
                             <div className="stat-info" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <div>
                                     <h3 style={{ color: gananciaTotal >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                                        ${gananciaTotal.toLocaleString()}
+                                        R${gananciaTotal.toLocaleString()}
                                     </h3>
                                     <p>Ganancia</p>
                                 </div>
@@ -221,7 +221,7 @@ export default function Dashboard() {
                                 <Tooltip
                                     contentStyle={{ background: '#1e2235', border: '1px solid #2d3250', borderRadius: '8px' }}
                                     labelStyle={{ color: '#e8eaf0' }}
-                                    formatter={(value) => [`$${value.toLocaleString()}`, 'Total']}
+                                    formatter={(value) => [`R$${value.toLocaleString()}`, 'Total']}
                                 />
                                 <Area type="monotone" dataKey="total" stroke="#6c5ce7" fillOpacity={1} fill="url(#colorVenta)" strokeWidth={2} />
                             </AreaChart>
@@ -244,7 +244,7 @@ export default function Dashboard() {
                                 outerRadius={90}
                                 paddingAngle={5}
                                 dataKey="valor"
-                                label={({ name, valor }) => `${name}: $${valor.toLocaleString()}`}
+                                label={({ name, valor }) => `${name}: R$${valor.toLocaleString()}`}
                             >
                                 {inventarioData.map((entry, i) => (
                                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -252,7 +252,7 @@ export default function Dashboard() {
                             </Pie>
                             <Tooltip
                                 contentStyle={{ background: '#1e2235', border: '1px solid #2d3250', borderRadius: '8px' }}
-                                formatter={(value) => `$${value.toLocaleString()}`}
+                                formatter={(value) => `R$${value.toLocaleString()}`}
                             />
                         </PieChart>
                     </ResponsiveContainer>
@@ -273,7 +273,7 @@ export default function Dashboard() {
                                 <Tooltip
                                     contentStyle={{ background: '#1e2235', border: '1px solid #2d3250', borderRadius: '8px' }}
                                     labelStyle={{ color: '#e8eaf0' }}
-                                    formatter={(value) => [`$${value.toLocaleString()}`, 'Ingresos']}
+                                    formatter={(value) => [`R$${value.toLocaleString()}`, 'Ingresos']}
                                 />
                                 <Bar dataKey="ingresos" fill="#00cec9" radius={[0, 6, 6, 0]} />
                             </BarChart>

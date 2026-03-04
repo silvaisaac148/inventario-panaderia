@@ -49,9 +49,14 @@ async def actualizar(
     return result
 
 
-@router.delete("/{ingrediente_id}", status_code=405, include_in_schema=False)
-async def eliminar(ingrediente_id: UUID):
-    raise HTTPException(405, "Los ingredientes no se pueden eliminar porque están vinculados a recetas e historial de movimientos.")
+@router.delete("/{ingrediente_id}", status_code=204)
+async def eliminar(ingrediente_id: UUID, db: AsyncSession = Depends(get_db)):
+    try:
+        resultado = await service.eliminar_ingrediente(db, ingrediente_id)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    if resultado.get("not_found"):
+        raise HTTPException(404, "Ingrediente no encontrado")
 
 
 @router.post("/{ingrediente_id}/compra")
