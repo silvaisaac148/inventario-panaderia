@@ -316,11 +316,31 @@ export default function Ingredientes() {
                                             <input type="number" step="0.01" min="0.01" value={compraSimple.costo_total} onChange={(e) => setCompraSimple({ ...compraSimple, costo_total: e.target.value })} required placeholder="Ej: 260" />
                                         </div>
                                     </div>
-                                    {compraSimple.cantidad && compraSimple.costo_total && (
-                                        <div className="alert alert-info" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
-                                            💡 R${(parseFloat(compraSimple.costo_total) / parseFloat(compraSimple.cantidad)).toFixed(4)}/{selected.unidad_medida}
-                                        </div>
-                                    )}
+                                    {compraSimple.cantidad && compraSimple.costo_total && (() => {
+                                        const qty = parseFloat(compraSimple.cantidad);
+                                        const cost = parseFloat(compraSimple.costo_total);
+                                        if (!qty || !cost) return null;
+                                        const costoPorUnidad = cost / qty;
+                                        const FACTORES = { kg: 1000, g: 1, lts: 1000, ml: 1 };
+                                        const factor = FACTORES[selected.unidad_medida] ?? null;
+                                        const costoPorGramo = factor ? costoPorUnidad / factor : null;
+                                        const stockActual = parseFloat(selected.stock_actual) || 0;
+                                        const costoActual = parseFloat(selected.costo_unitario) || 0;
+                                        const nuevoPromedio = stockActual > 0
+                                            ? (stockActual * costoActual + qty * costoPorUnidad) / (stockActual + qty)
+                                            : costoPorUnidad;
+                                        return (
+                                            <div className="alert alert-info" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
+                                                <strong>📊 Esta compra:</strong><br />
+                                                R${costoPorUnidad.toFixed(4)}/{selected.unidad_medida}
+                                                {costoPorGramo !== null && <> | R${costoPorGramo.toFixed(6)}/g</>}
+                                                <br />
+                                                <strong>↳ Nuevo promedio ponderado:</strong>{' '}
+                                                R${nuevoPromedio.toFixed(4)}/{selected.unidad_medida}
+                                                {costoPorGramo !== null && <> | R${(nuevoPromedio / factor).toFixed(6)}/g</>}
+                                            </div>
+                                        );
+                                    })()}
                                     <div className="form-group">
                                         <label>Nota (opcional)</label>
                                         <input value={compraSimple.nota} onChange={(e) => setCompraSimple({ ...compraSimple, nota: e.target.value })} placeholder="Ej: Proveedor ABC" />

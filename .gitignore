@@ -43,3 +43,4 @@ pip_log.txt
 
 # Test scripts
 test_api.py
+test_completo.py

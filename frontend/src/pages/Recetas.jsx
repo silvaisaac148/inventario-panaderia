@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { recetasAPI, ingredientesAPI, productosAPI } from '../services/api';
-import { MdAdd, MdDelete, MdClose, MdCalculate, MdRemoveCircle } from 'react-icons/md';
+import { MdAdd, MdDelete, MdClose, MdCalculate, MdRemoveCircle, MdEdit } from 'react-icons/md';
 
 const UNIDADES = ['g', 'kg', 'ml', 'lts', 'und', 'hoj'];
 
@@ -14,6 +14,7 @@ export default function Recetas() {
     const [productos, setProductos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
+    const [editingId, setEditingId] = useState(null);
     const [costoModal, setCostoModal] = useState(null);
     const [msg, setMsg] = useState(null);
     const [form, setForm] = useState({
@@ -38,6 +39,26 @@ export default function Recetas() {
     const resetForm = () => {
         setForm({ nombre: '', producto_id: '', rendimiento: 1, notas: '', mano_de_obra: 0, porcentaje_ganancia: 30, porcentaje_merma: 0, detalles: [] });
         setModal(null);
+        setEditingId(null);
+    };
+
+    const handleEditar = (receta) => {
+        setForm({
+            nombre: receta.nombre,
+            producto_id: receta.producto_id,
+            rendimiento: receta.rendimiento,
+            notas: receta.notas || '',
+            mano_de_obra: receta.mano_de_obra ?? 0,
+            porcentaje_ganancia: receta.porcentaje_ganancia ?? 30,
+            porcentaje_merma: receta.porcentaje_merma ?? 0,
+            detalles: receta.detalles.map(d => ({
+                ingrediente_id: d.ingrediente_id,
+                cantidad: d.cantidad,
+                unidad: d.unidad,
+            })),
+        });
+        setEditingId(receta.id);
+        setModal('editar');
     };
 
     const addDetalle = () => setForm({ ...form, detalles: [...form.detalles, { ingrediente_id: '', cantidad: 0, unidad: 'g' }] });
@@ -60,8 +81,13 @@ export default function Recetas() {
                 porcentaje_merma: parseFloat(form.porcentaje_merma) || 0,
                 detalles: form.detalles.map(d => ({ ...d, cantidad: parseFloat(d.cantidad) })),
             };
-            await recetasAPI.crear(data);
-            setMsg({ tipo: 'success', texto: 'Receta creada' });
+            if (editingId) {
+                await recetasAPI.actualizar(editingId, data);
+                setMsg({ tipo: 'success', texto: 'Receta actualizada' });
+            } else {
+                await recetasAPI.crear(data);
+                setMsg({ tipo: 'success', texto: 'Receta creada' });
+            }
             resetForm(); cargar();
         } catch (err) {
             setMsg({ tipo: 'danger', texto: err.response?.data?.detail || 'Error al guardar' });
@@ -121,6 +147,7 @@ export default function Recetas() {
                                 <td>
                                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                                         <button className="btn btn-outline btn-sm" onClick={() => verCosto(r)} title="Calcular costo"><MdCalculate /></button>
+                                        <button className="btn btn-outline btn-sm" onClick={() => handleEditar(r)} title="Editar receta"><MdEdit /></button>
                                         <button className="btn btn-danger btn-sm" onClick={() => handleEliminar(r)}><MdDelete /></button>
                                     </div>
                                 </td>
@@ -130,12 +157,12 @@ export default function Recetas() {
                 </table>
             </div>
 
-            {/* Modal Crear */}
-            {modal === 'crear' && (
+            {/* Modal Crear / Editar */}
+            {(modal === 'crear' || modal === 'editar') && (
                 <div className="modal-overlay" onClick={resetForm}>
                     <div className="modal" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>➕ Nueva Receta</h2>
+                            <h2>{modal === 'editar' ? '✏️ Editar Receta' : '➕ Nueva Receta'}</h2>
                             <button className="close-btn" onClick={resetForm}><MdClose /></button>
                         </div>
                         <form onSubmit={handleSubmit}>
@@ -209,7 +236,7 @@ export default function Recetas() {
                             </div>
                             <div className="modal-actions">
                                 <button type="button" className="btn btn-outline" onClick={resetForm}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary">Crear Receta</button>
+                                <button type="submit" className="btn btn-primary">{modal === 'editar' ? 'Guardar Cambios' : 'Crear Receta'}</button>
                             </div>
                         </form>
                     </div>

@@ -1,7 +1,7 @@
 """Rutas API: Dashboard y Reportes."""
 
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,7 +11,9 @@ from app.models.producto import Producto
 from app.models.produccion import Produccion
 from app.models.venta import Venta
 from app.models.movimiento import MovimientoStock
+from app.models.usuario import Usuario
 from app.services import movimiento_service
+from app.utils.auth import require_admin
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
 
@@ -235,12 +237,13 @@ async def tendencias_ventas(
     }
 
 
-@router.delete("/reset-db")
+@router.delete("/reset-db", dependencies=[Depends(require_admin)])
 async def reset_database(
     db: AsyncSession = Depends(get_db),
 ):
     """
     ⚠️ ALERTA: Borra todos los datos del inventario, ventas y producción.
+    Solo accesible por administradores autenticados.
     """
     from sqlalchemy import text
     try:
@@ -253,9 +256,9 @@ async def reset_database(
         await db.execute(text("DELETE FROM recetas"))
         await db.execute(text("DELETE FROM productos"))
         await db.execute(text("DELETE FROM ingredientes"))
-        
+
         await db.commit()
         return {"mensaje": "Base de datos restaurada de fábrica exitosamente.", "status": "ok"}
     except Exception as e:
         await db.rollback()
-        raise {"error": str(e), "status": "failed"}
+        raise HTTPException(status_code=500, detail=str(e))
